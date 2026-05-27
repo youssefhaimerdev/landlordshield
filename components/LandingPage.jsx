@@ -3,169 +3,473 @@ import { useState } from 'react'
 import { C, SD, lvl } from '@/lib/constants'
 import USMap from '@/components/ui/USMap'
 
+const SERIF = "var(--font-playfair, 'Playfair Display', Georgia, serif)"
+const SANS  = "var(--font-dm-sans, 'DM Sans', -apple-system, sans-serif)"
+
+const TICKER_ITEMS = [
+  "🔴  URGENT · California — AB 414 Security Deposit Reform — Deadline June 15",
+  "🟡  NEW · Florida — Notice Period Extended 30→45 Days — August 1",
+  "🔴  URGENT · Washington — Just Cause Eviction Statewide — Deadline May 30",
+  "🔴  URGENT · New Jersey — Anti-Eviction Act Amendment — July 1",
+  "🟡  NEW · Oregon — Rent Control Cap Reduced to 7% — In Effect Now",
+  "🔴  URGENT · Massachusetts — Tenant Protections Act — October 1",
+  "✅  CLEAR · Texas — No Changes — Fully Compliant",
+  "🔴  URGENT · Hawaii — Short-Term Rental Permits Required — July 1",
+  "🟡  NEW · Colorado — Broadband Now Required Utility — September 1",
+  "🟡  NEW · Minnesota — Rent Stabilization Extended Through 2027",
+]
+
+const TESTIMONIALS = [
+  {
+    name: "Marcus R.", role: "7-unit landlord · Sacramento, CA", initials: "MR", color: "#EF4444", stars: 5,
+    text: "I got fined $4,200 because I didn't know California changed the deposit rules. After that nightmare I found LawRadar. Haven't had a single compliance issue since. Worth every single penny.",
+  },
+  {
+    name: "Sandra K.", role: "Property Manager · Portland, OR", initials: "SK", color: "#8B5CF6", stars: 5,
+    text: "Oregon's rent control laws change every year and keeping up was a full-time job. LawRadar sends me exactly what changed and exactly what to update in my leases. My clients think I'm a genius.",
+  },
+  {
+    name: "David T.", role: "14-unit landlord · Seattle, WA", initials: "DT", color: "#0EA5E9", stars: 5,
+    text: "Washington's just cause eviction law caught me completely off guard. LawRadar alerted me 3 weeks before it took effect. I updated all my leases in time. Could have been a very costly mistake.",
+  },
+]
+
+const PAIN_CARDS = [
+  { icon: "💸", title: "Average landlord fine: $3,800", body: "Non-compliance penalties hit small landlords hardest. A single missed deposit rule, improper eviction notice, or outdated lease clause can wipe out months of rental income." },
+  { icon: "⚖️", title: "Evictions get thrown out of court", body: "Courts routinely dismiss eviction cases when landlords can't prove they followed the latest procedural requirements. The tenant stays. You pay court costs. You start over." },
+  { icon: "📋", title: "Lease clauses become illegal overnight", body: "A clause that was perfectly legal last year can expose you to tenant lawsuits this year. Laws change constantly. Your lease needs to change with them — or it becomes a weapon against you." },
+]
+
+const STATS = [
+  { n: "12,000+", label: "Landlords Protected" },
+  { n: "50",      label: "States Monitored" },
+  { n: "$47M+",   label: "In Fines Prevented" },
+  { n: "<24hrs",  label: "Alert Delivery Time" },
+]
+
+const FEATURES = [
+  { icon: "📡", tag: "Core", title: "Real-Time Law Monitoring", body: "Our engine scans all 50 state legislative databases every day. The moment a bill affecting landlords is filed, progresses, or passes — you know before most attorneys do." },
+  { icon: "📋", tag: "AI", title: "Plain-English Summaries", body: "Every law change translated from dense legal jargon into a 3-sentence explanation. What changed, who it affects, and why it matters. Zero lawyer-speak." },
+  { icon: "✅", tag: "Smart", title: "Exact Action Checklists", body: "Not just what changed — but which lease clause to update, which form to file, and which deadline to hit. Your compliance to-do list, auto-generated." },
+  { icon: "📊", tag: "Dashboard", title: "Compliance Health Score", body: "A live 0–100 score across all your properties. Green = safe. Amber = review. Red = act now. Automatically updated every time a law changes in your states." },
+  { icon: "🤖", tag: "AI Chat", title: "Ask the Law AI", body: "Ask any landlord law question in plain English. Get an accurate, jurisdiction-specific answer grounded in real legislation. Like a property attorney on call — for $19/month." },
+  { icon: "🔔", tag: "Alerts", title: "Deadline Reminders", body: "Email and SMS reminders at 30 days, 7 days, and the day before every compliance deadline. Never find out in the courtroom." },
+]
+
+const FAQ = [
+  { q: "Is this actual legal advice?", a: "No — LawRadar provides general legal information, not legal advice. Think of us as a very well-informed assistant that tells you when laws change and what they mean in plain English. For specific legal situations, always consult a qualified attorney." },
+  { q: "How fast do I get alerted when a law changes?", a: "Our engine checks all 50 state databases every day. For urgent changes, we run additional scans. Most landlords receive their alert within 24 hours of a bill being signed into law." },
+  { q: "I only own one property in one state. Is it worth it?", a: "Absolutely. The average non-compliance fine is $3,800. Our Pro plan is $19/month. That's 16+ years of protection for the price of one avoided fine." },
+  { q: "How accurate is the AI summary?", a: "Very. We pull directly from official state legislative databases via the LegiScan API, then use Gemini to generate plain-English summaries. Every summary includes a direct link to the source legislation so you can verify it yourself." },
+  { q: "Can I cancel anytime?", a: "Yes — cancel with a single click from your dashboard, no phone calls, no questions asked. Your access continues until the end of your billing period." },
+]
+
+// ── Alert Float Card ─────────────────────────────────────────
+function AlertCard({ level, state, law, deadline, cls }) {
+  const isH = level === 'high'
+  return (
+    <div className={cls} style={{
+      position: 'absolute',
+      background: 'rgba(10,16,28,0.95)',
+      border: `1px solid ${isH ? 'rgba(239,68,68,0.35)' : 'rgba(16,185,129,0.28)'}`,
+      borderRadius: 16, padding: '14px 18px',
+      backdropFilter: 'blur(12px)',
+      boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+      minWidth: 230, maxWidth: 260, zIndex: 2,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+        <div style={{ width: 7, height: 7, borderRadius: '50%', background: isH ? '#EF4444' : '#10B981', animation: isH ? 'pulse 1.8s infinite' : 'none' }} />
+        <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', color: isH ? '#EF4444' : '#10B981' }}>{isH ? 'URGENT' : 'COMPLIANT'}</span>
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: '#F1F5F9', marginBottom: 4 }}>{state}</div>
+      <div style={{ fontSize: 11, color: '#94A3B8', lineHeight: 1.5, marginBottom: deadline ? 8 : 0 }}>{law}</div>
+      {deadline && <div style={{ fontSize: 10, color: '#EF4444', fontWeight: 700 }}>⏰ {deadline}</div>}
+    </div>
+  )
+}
+
+function Stars() {
+  return <div style={{ display: 'flex', gap: 2, marginBottom: 16 }}>{[1,2,3,4,5].map(i => <span key={i} style={{ color: '#F59E0B', fontSize: 15 }}>★</span>)}</div>
+}
+
+// ── MAIN COMPONENT ───────────────────────────────────────────
 export default function LandingPage({ onStart }) {
-  const [hovered, setHovered] = useState(null)
+  const [mapHovered, setMapHovered] = useState(null)
+  const [openFaq,    setOpenFaq]    = useState(null)
   const totalAlerts = Object.values(SD).reduce((s, v) => s + v.c, 0)
-  const highStates  = Object.values(SD).filter(v => v.v === 'high').length
-  const hd = hovered ? SD[hovered] : null
-  const l  = hd ? lvl(hd.v) : null
 
   return (
-    <div style={{ background: C.bg0, color: C.text, fontFamily: "var(--font-dm-sans), -apple-system, sans-serif", overflowX: 'hidden' }}>
+    <div style={{ background: C.bg0, color: C.text, fontFamily: SANS, overflowX: 'hidden' }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+        * { box-sizing: border-box; }
+        @keyframes floatA { 0%,100%{transform:translateY(0) rotate(-2deg)} 50%{transform:translateY(-18px) rotate(-2deg)} }
+        @keyframes floatB { 0%,100%{transform:translateY(0) rotate(2deg)}  50%{transform:translateY(-12px) rotate(2deg)}  }
+        @keyframes floatC { 0%,100%{transform:translateY(0) rotate(-1deg)} 50%{transform:translateY(-22px) rotate(-1deg)} }
+        @keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+        @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:0.35} }
+        @keyframes goldGlow { 0%,100%{box-shadow:0 0 28px rgba(245,158,11,0.25)} 50%{box-shadow:0 0 56px rgba(245,158,11,0.55)} }
+        .float-a { animation: floatA 5s  ease-in-out infinite; }
+        .float-b { animation: floatB 6.5s ease-in-out infinite 1s; }
+        .float-c { animation: floatC 8s  ease-in-out infinite 2s; }
+        .ticker-track { display:inline-flex; gap:72px; animation:ticker 40s linear infinite; white-space:nowrap; }
+        .ticker-track:hover { animation-play-state:paused; }
+        .nav-link:hover { color:#F1F5F9 !important; }
+        .hero-btn:hover  { transform:translateY(-2px) !important; }
+        .pain-card:hover { transform:translateY(-4px) !important; border-color:rgba(245,158,11,0.22) !important; }
+        .feat-row:hover  { background:rgba(255,255,255,0.03) !important; }
+        .test-card:hover { transform:translateY(-4px) !important; }
+        .price-card:hover { transform:translateY(-5px) !important; }
+        ::-webkit-scrollbar { width:4px; }
+        ::-webkit-scrollbar-thumb { background:#1E2D40; border-radius:4px; }
+      `}</style>
 
-      {/* NAV */}
-      <nav style={{ position: 'sticky', top: 0, zIndex: 200, background: 'rgba(7,12,24,0.9)', backdropFilter: 'blur(16px)', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 48px', height: 64 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 34, height: 34, background: C.gold, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17 }}>⚖️</div>
-          <span style={{ fontFamily: "var(--font-playfair), Georgia, serif", fontSize: 21, fontWeight: 700, letterSpacing: '-0.02em' }}>LawRadar</span>
+      {/* ════ NAV ════════════════════════════════════════════ */}
+      <nav style={{ position:'sticky', top:0, zIndex:300, background:'rgba(7,12,24,0.93)', backdropFilter:'blur(20px)', borderBottom:`1px solid ${C.border}`, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 56px', height:68 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ width:36, height:36, background:C.gold, borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>⚖️</div>
+          <span style={{ fontFamily:SERIF, fontSize:22, fontWeight:700, letterSpacing:'-0.02em' }}>LawRadar</span>
         </div>
-        <div style={{ display: 'flex', gap: 32, alignItems: 'center' }}>
-          {['Features', 'Pricing', 'Blog'].map(n => (
-            <span key={n} style={{ color: C.textMid, fontSize: 14, cursor: 'pointer' }}>{n}</span>
+        <div style={{ display:'flex', gap:36, alignItems:'center' }}>
+          {['Features','How It Works','Pricing','Blog'].map(n=>(
+            <span key={n} className="nav-link" style={{ color:C.textMid, fontSize:14, cursor:'pointer', transition:'color 0.15s' }}>{n}</span>
           ))}
-          <button onClick={onStart} style={{ background: C.gold, color: '#000', border: 'none', borderRadius: 8, padding: '9px 22px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-            Get Started Free
+          <button onClick={onStart} style={{ background:C.gold, color:'#000', border:'none', borderRadius:9, padding:'10px 24px', fontSize:14, fontWeight:700, cursor:'pointer' }}>
+            Start Free →
           </button>
         </div>
       </nav>
 
-      {/* HERO */}
-      <div style={{ minHeight: '90vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '80px 48px 60px', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.028) 1px, transparent 1px)', backgroundSize: '32px 32px', zIndex: 0 }} />
-        <div style={{ position: 'absolute', top: '18%', left: '12%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.06) 0%, transparent 70%)', zIndex: 0 }} />
-        <div style={{ position: 'relative', zIndex: 1, maxWidth: 880 }}>
-          <div className="fadeUp" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: C.amberBg, border: `1px solid ${C.amberBorder}`, borderRadius: 100, padding: '7px 18px', marginBottom: 36 }}>
-            <div style={{ width: 7, height: 7, borderRadius: '50%', background: C.gold, animation: 'pulse 2s infinite' }} />
-            <span style={{ fontSize: 13, color: C.gold, fontWeight: 500 }}>Live monitoring · {totalAlerts} active law changes tracked across all 50 states</span>
+      {/* ════ HERO ═══════════════════════════════════════════ */}
+      <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', position:'relative', overflow:'hidden', padding:'100px 56px 80px' }}>
+        <div style={{ position:'absolute', inset:0, backgroundImage:'radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px)', backgroundSize:'36px 36px', zIndex:0 }} />
+        <div style={{ position:'absolute', top:'8%', right:'22%', width:640, height:640, borderRadius:'50%', background:'radial-gradient(circle, rgba(245,158,11,0.07) 0%, transparent 65%)', zIndex:0 }} />
+        <div style={{ position:'absolute', bottom:'15%', left:'2%', width:380, height:380, borderRadius:'50%', background:'radial-gradient(circle, rgba(239,68,68,0.05) 0%, transparent 65%)', zIndex:0 }} />
+
+        {/* Text column */}
+        <div style={{ maxWidth:600, position:'relative', zIndex:1 }}>
+          <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:C.amberBg, border:`1px solid ${C.amberBorder}`, borderRadius:100, padding:'7px 18px', marginBottom:32 }}>
+            <div style={{ width:7, height:7, borderRadius:'50%', background:C.gold, animation:'pulse 2s infinite' }} />
+            <span style={{ fontSize:13, color:C.gold, fontWeight:500 }}>Live · {totalAlerts} active law changes tracked across all 50 states</span>
           </div>
 
-          <h1 className="fadeUp-1" style={{ fontFamily: "var(--font-playfair), Georgia, serif", fontSize: 'clamp(38px, 5.5vw, 68px)', fontWeight: 700, lineHeight: 1.08, letterSpacing: '-0.028em', marginBottom: 26, color: C.text }}>
-            Never Get Blindsided<br />
-            <em style={{ fontStyle: 'italic', color: C.gold }}>By A New Landlord Law</em>
+          <h1 style={{ fontFamily:SERIF, fontSize:'clamp(42px,5vw,70px)', fontWeight:700, lineHeight:1.06, letterSpacing:'-0.03em', marginBottom:28 }}>
+            The Law Just<br />Changed.<br />
+            <em style={{ color:C.gold, fontStyle:'italic' }}>Did You Know?</em>
           </h1>
 
-          <p className="fadeUp-2" style={{ fontSize: 'clamp(16px, 1.8vw, 20px)', color: C.textMid, lineHeight: 1.75, maxWidth: 620, margin: '0 auto 44px' }}>
-            LawRadar monitors rental legislation across all 50 states in real-time and delivers plain-English summaries — with exactly what to update in your lease — the moment a law changes.
+          <p style={{ fontSize:20, color:C.textMid, lineHeight:1.75, marginBottom:18, maxWidth:530 }}>
+            LawRadar watches every state legislature 24/7 and sends you a plain-English alert — with the exact lease clause to update — the moment a rental law changes.
+          </p>
+          <p style={{ fontSize:15, color:'#6B7280', lineHeight:1.7, marginBottom:44, maxWidth:520 }}>
+            No lawyers. No newsletters. No Googling. Just one email that tells you exactly what changed, what you owe, and what to update.
           </p>
 
-          <div className="fadeUp-3" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button onClick={onStart} style={{ background: C.gold, color: '#000', border: 'none', borderRadius: 11, padding: '15px 36px', fontSize: 17, fontWeight: 700, cursor: 'pointer', animation: 'goldGlow 3s ease infinite' }}>
-              Start Monitoring Free →
+          <div style={{ display:'flex', gap:14, flexWrap:'wrap', marginBottom:28 }}>
+            <button className="hero-btn" onClick={onStart} style={{ background:C.gold, color:'#000', border:'none', borderRadius:12, padding:'17px 44px', fontSize:18, fontWeight:800, cursor:'pointer', animation:'goldGlow 3s ease infinite', transition:'transform 0.2s' }}>
+              Start Monitoring Free
             </button>
-            <button style={{ background: 'transparent', color: C.text, border: `1px solid ${C.border}`, borderRadius: 11, padding: '15px 36px', fontSize: 17, cursor: 'pointer' }}>
-              Watch Demo
+            <button className="hero-btn" style={{ background:'transparent', color:C.text, border:`1px solid rgba(255,255,255,0.14)`, borderRadius:12, padding:'17px 32px', fontSize:18, cursor:'pointer', transition:'transform 0.2s' }}>
+              Watch 2-Min Demo ▶
             </button>
           </div>
+          <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+            {['✓ Free to start','✓ No credit card','✓ Cancel anytime','✓ All 50 states'].map(t=>(
+              <span key={t} style={{ fontSize:13, color:'#6B7280' }}>{t}&nbsp;&nbsp;</span>
+            ))}
+          </div>
+        </div>
 
-          <div className="fadeUp-4" style={{ display: 'flex', gap: 48, justifyContent: 'center', marginTop: 72, flexWrap: 'wrap' }}>
-            {[{ n: '50', label: 'States Monitored' }, { n: `${totalAlerts}`, label: 'Laws Tracked in 2026' }, { n: `${highStates}`, label: 'Urgent Alert States' }, { n: '12,000+', label: 'Landlords Protected' }].map(({ n, label }) => (
-              <div key={label} style={{ textAlign: 'center' }}>
-                <div style={{ fontFamily: "var(--font-playfair), Georgia, serif", fontSize: 36, fontWeight: 700, color: C.gold, lineHeight: 1 }}>{n}</div>
-                <div style={{ fontSize: 13, color: C.textMid, marginTop: 6 }}>{label}</div>
-              </div>
+        {/* Floating alert cards */}
+        <div style={{ position:'absolute', right:'5%', top:'50%', transform:'translateY(-50%)', width:320, height:500, zIndex:1 }}>
+          <AlertCard cls="float-a" level="high" state="Washington" law="HB 2057 — Just Cause Eviction now statewide" deadline="May 30 — 3 days left" style={{ top:0, right:0 }} />
+          <AlertCard cls="float-b" level="high" state="California" law="AB 414 — Security Deposit Reform" deadline="June 15, 2026" style={{ top:165, right:30 }} />
+          <AlertCard cls="float-c" level="ok"   state="Texas"      law="No recent changes — Fully compliant" deadline={null} style={{ top:330, right:5 }} />
+        </div>
+      </div>
+
+      {/* ════ TICKER ═════════════════════════════════════════ */}
+      <div style={{ background:'#0A0F1E', borderTop:`1px solid ${C.border}`, borderBottom:`1px solid ${C.border}`, padding:'14px 0', overflow:'hidden' }}>
+        <div style={{ overflow:'hidden', whiteSpace:'nowrap' }}>
+          <div className="ticker-track">
+            {[...TICKER_ITEMS,...TICKER_ITEMS].map((item,i)=>(
+              <span key={i} style={{ fontSize:13, color:C.textMid }}>{item}</span>
             ))}
           </div>
         </div>
       </div>
 
-      {/* MAP SECTION */}
-      <div style={{ background: C.bg1, padding: '80px 48px', borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 40 }}>
-            <h2 style={{ fontFamily: "var(--font-playfair), Georgia, serif", fontSize: 38, fontWeight: 700, marginBottom: 14 }}>Your Legal Shield Across Every State</h2>
-            <p style={{ color: C.textMid, fontSize: 16 }}>Hover over any state to see its current legal status and latest changes</p>
-          </div>
-          <div style={{ display: 'flex', gap: 28, justifyContent: 'center', marginBottom: 32, flexWrap: 'wrap' }}>
-            {[{ c: '#EF4444', label: 'Urgent — Action Required' }, { c: '#F59E0B', label: 'Recent Changes' }, { c: '#1A2840', label: 'Compliant' }].map(({ c, label }) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 13, height: 13, borderRadius: 4, background: c }} />
-                <span style={{ fontSize: 13, color: C.textMid }}>{label}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: '24px 24px 16px', overflow: 'hidden' }}>
-            <USMap hovered={hovered} onHover={setHovered} />
-          </div>
-          <p style={{ textAlign: 'center', fontSize: 13, color: C.textDim, marginTop: 14 }}>Data updated daily via LegiScan API · Summaries generated by Gemini AI</p>
-        </div>
-      </div>
-
-      {/* FEATURES */}
-      <div style={{ padding: '88px 48px', maxWidth: 1120, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 60 }}>
-          <h2 style={{ fontFamily: "var(--font-playfair), Georgia, serif", fontSize: 38, fontWeight: 700, marginBottom: 14 }}>Everything You Need. Nothing You Don't.</h2>
-          <p style={{ color: C.textMid, fontSize: 16, maxWidth: 520, margin: '0 auto' }}>Built specifically for independent landlords who don't have a legal team on speed-dial.</p>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 22 }}>
-          {[
-            { icon: '📡', title: 'Real-Time Law Monitoring',   desc: "Our engine scans all 50 state legislative databases daily. The moment a bill affecting landlords is introduced or passes — you know before most attorneys do." },
-            { icon: '📋', title: 'Plain-English Summaries',    desc: "Every law change translated from dense legal jargon into a clear 3-sentence explanation. You'll instantly understand what changed and why it matters." },
-            { icon: '✅', title: 'Exact Action Checklists',    desc: "Not just what changed — but precisely which clause to update, which document to file, and which deadline to hit. Your to-do list, auto-generated." },
-            { icon: '📊', title: 'Compliance Health Score',    desc: "A live score (0–100) across all your properties. Green = safe. Amber = act soon. Red = act now. Updated automatically as laws change." },
-            { icon: '🤖', title: 'Ask the Law AI',             desc: "Ask any landlord law question in plain English. Get an accurate, jurisdiction-specific answer grounded in real legislation. Powered by Gemini." },
-            { icon: '🔔', title: 'Deadline Alerts',            desc: "Proactive email and SMS alerts before every compliance deadline. Never miss a required update — even for minor changes most landlords overlook." },
-          ].map(({ icon, title, desc }) => (
-            <div key={title} className="feat-card" style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 18, padding: 30 }}>
-              <div style={{ fontSize: 34, marginBottom: 18 }}>{icon}</div>
-              <h3 style={{ fontFamily: "var(--font-playfair), Georgia, serif", fontSize: 19, fontWeight: 700, marginBottom: 12 }}>{title}</h3>
-              <p style={{ fontSize: 14, color: C.textMid, lineHeight: 1.72 }}>{desc}</p>
+      {/* ════ STATS ══════════════════════════════════════════ */}
+      <div style={{ background:C.bg1, borderBottom:`1px solid ${C.border}`, padding:'56px' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto', display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:20 }}>
+          {STATS.map(({ n, label })=>(
+            <div key={label} style={{ textAlign:'center', padding:'28px 16px', background:C.card, border:`1px solid ${C.border}`, borderRadius:18 }}>
+              <div style={{ fontFamily:SERIF, fontSize:48, fontWeight:700, color:C.gold, lineHeight:1, marginBottom:10 }}>{n}</div>
+              <div style={{ fontSize:14, color:C.textMid }}>{label}</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* PRICING */}
-      <div style={{ background: C.bg1, borderTop: `1px solid ${C.border}`, padding: '88px 48px' }}>
-        <div style={{ maxWidth: 820, margin: '0 auto', textAlign: 'center' }}>
-          <h2 style={{ fontFamily: "var(--font-playfair), Georgia, serif", fontSize: 38, fontWeight: 700, marginBottom: 14 }}>Simple, Honest Pricing</h2>
-          <p style={{ color: C.textMid, fontSize: 16, marginBottom: 52 }}>Start free. Upgrade when you see the value — which is usually day one.</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+      {/* ════ PAIN ═══════════════════════════════════════════ */}
+      <div style={{ padding:'110px 56px', background:C.bg0 }}>
+        <div style={{ maxWidth:1100, margin:'0 auto' }}>
+          <div style={{ textAlign:'center', marginBottom:20 }}>
+            <span style={{ fontSize:11, fontWeight:800, letterSpacing:'0.12em', textTransform:'uppercase', color:C.red, background:C.redBg, border:`1px solid ${C.redBorder}`, borderRadius:100, padding:'5px 14px' }}>The Hidden Danger</span>
+          </div>
+          <h2 style={{ fontFamily:SERIF, fontSize:'clamp(34px,4.5vw,58px)', fontWeight:700, textAlign:'center', marginBottom:20, lineHeight:1.12 }}>
+            Most Landlords Find Out<br /><em style={{ color:C.red, fontStyle:'italic' }}>Too Late</em>
+          </h2>
+          <p style={{ color:C.textMid, fontSize:18, textAlign:'center', maxWidth:580, margin:'0 auto 64px', lineHeight:1.75 }}>
+            Rental laws change constantly — and the penalties don't care whether you knew about the change or not.
+          </p>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))', gap:24, marginBottom:48 }}>
+            {PAIN_CARDS.map(({ icon, title, body })=>(
+              <div key={title} className="pain-card" style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:22, padding:40, transition:'all 0.2s' }}>
+                <div style={{ fontSize:48, marginBottom:22 }}>{icon}</div>
+                <h3 style={{ fontFamily:SERIF, fontSize:22, fontWeight:700, marginBottom:14, lineHeight:1.3 }}>{title}</h3>
+                <p style={{ fontSize:15, color:C.textMid, lineHeight:1.8 }}>{body}</p>
+              </div>
+            ))}
+          </div>
+          {/* Real story */}
+          <div style={{ background:'linear-gradient(135deg,rgba(239,68,68,0.07) 0%,rgba(245,158,11,0.05) 100%)', border:`1px solid rgba(239,68,68,0.2)`, borderRadius:22, padding:'40px 52px', display:'flex', gap:28, alignItems:'flex-start' }}>
+            <div style={{ fontSize:56, lineHeight:1, color:C.gold, fontFamily:SERIF, flexShrink:0, marginTop:-8 }}>"</div>
+            <div>
+              <p style={{ fontSize:18, color:C.text, lineHeight:1.82, marginBottom:24, fontStyle:'italic' }}>
+                I lost an eviction case I should have won — and had to pay the tenant's attorney fees — because my notice period was 30 days when California had quietly changed it to 45. Nobody told me. I found out in the courtroom.
+              </p>
+              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                <div style={{ width:46, height:46, borderRadius:'50%', background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.28)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, color:'#FCA5A5', fontSize:14 }}>JM</div>
+                <div>
+                  <div style={{ fontSize:14, fontWeight:600 }}>James M.</div>
+                  <div style={{ fontSize:12, color:C.textMid }}>22-unit landlord · Los Angeles, CA</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ════ HOW IT WORKS ═══════════════════════════════════ */}
+      <div style={{ background:C.bg1, borderTop:`1px solid ${C.border}`, borderBottom:`1px solid ${C.border}`, padding:'110px 56px' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto' }}>
+          <div style={{ textAlign:'center', marginBottom:68 }}>
+            <span style={{ fontSize:11, fontWeight:800, letterSpacing:'0.12em', textTransform:'uppercase', color:C.gold, background:C.amberBg, border:`1px solid ${C.amberBorder}`, borderRadius:100, padding:'5px 14px' }}>How It Works</span>
+            <h2 style={{ fontFamily:SERIF, fontSize:'clamp(34px,4.5vw,58px)', fontWeight:700, marginTop:22, marginBottom:16 }}>Set Up in 3 Minutes.<br />Protected Forever.</h2>
+            <p style={{ color:C.textMid, fontSize:18, maxWidth:480, margin:'0 auto' }}>No technical knowledge required. Just your state and property type.</p>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:0, position:'relative' }}>
+            <div style={{ position:'absolute', top:52, left:'18%', right:'18%', height:1, background:`linear-gradient(to right,${C.gold}40,${C.gold}40)` }} />
+            {[
+              { n:'01', icon:'🏠', title:'Register Your Properties', body:'Pick your states and property types. Two minutes. Zero technical setup.' },
+              { n:'02', icon:'📡', title:'We Watch Everything', body:'Our engine scans all 50 state legislatures daily. Keywords, bill status, effective dates — all tracked for you.' },
+              { n:'03', icon:'📬', title:'You Get Instant Alerts', body:"Plain-English email: what changed, what you owe, what to update, by when. No jargon." },
+            ].map(({ n, icon, title, body })=>(
+              <div key={n} style={{ textAlign:'center', padding:'0 44px' }}>
+                <div style={{ width:80, height:80, borderRadius:22, background:C.amberBg, border:`1px solid ${C.amberBorder}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:36, margin:'0 auto 22px', position:'relative', zIndex:1 }}>
+                  {icon}
+                  <div style={{ position:'absolute', top:-10, right:-10, width:28, height:28, borderRadius:'50%', background:C.gold, color:'#000', fontSize:12, fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center' }}>{n}</div>
+                </div>
+                <h3 style={{ fontFamily:SERIF, fontSize:20, fontWeight:700, marginBottom:12 }}>{title}</h3>
+                <p style={{ fontSize:15, color:C.textMid, lineHeight:1.75 }}>{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ════ MAP ════════════════════════════════════════════ */}
+      <div style={{ padding:'110px 56px', background:C.bg0 }}>
+        <div style={{ maxWidth:1100, margin:'0 auto' }}>
+          <div style={{ textAlign:'center', marginBottom:48 }}>
+            <span style={{ fontSize:11, fontWeight:800, letterSpacing:'0.12em', textTransform:'uppercase', color:C.gold, background:C.amberBg, border:`1px solid ${C.amberBorder}`, borderRadius:100, padding:'5px 14px' }}>Live Map</span>
+            <h2 style={{ fontFamily:SERIF, fontSize:'clamp(34px,4.5vw,58px)', fontWeight:700, marginTop:22, marginBottom:16 }}>See Your Legal Exposure<br />Across Every State</h2>
+            <p style={{ color:C.textMid, fontSize:18 }}>Hover over any state. Red means you need to act now.</p>
+          </div>
+          <div style={{ display:'flex', gap:24, justifyContent:'center', marginBottom:32, flexWrap:'wrap' }}>
+            {[{ c:'#EF4444', label:'Urgent — Act Now' },{ c:'#F59E0B', label:'Changes Detected' },{ c:'#1A2840', label:'Compliant' }].map(({ c, label })=>(
+              <div key={label} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <div style={{ width:12, height:12, borderRadius:3, background:c }} />
+                <span style={{ fontSize:13, color:C.textMid }}>{label}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:24, padding:'28px 28px 16px', overflow:'hidden' }}>
+            <USMap hovered={mapHovered} onHover={setMapHovered} />
+          </div>
+          <p style={{ textAlign:'center', fontSize:13, color:'#4B5563', marginTop:14 }}>Updated daily via LegiScan API · Plain-English summaries by Gemini AI</p>
+        </div>
+      </div>
+
+      {/* ════ FEATURES ═══════════════════════════════════════ */}
+      <div style={{ background:C.bg1, borderTop:`1px solid ${C.border}`, padding:'110px 56px' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto' }}>
+          <div style={{ textAlign:'center', marginBottom:68 }}>
+            <span style={{ fontSize:11, fontWeight:800, letterSpacing:'0.12em', textTransform:'uppercase', color:C.gold, background:C.amberBg, border:`1px solid ${C.amberBorder}`, borderRadius:100, padding:'5px 14px' }}>Features</span>
+            <h2 style={{ fontFamily:SERIF, fontSize:'clamp(34px,4.5vw,58px)', fontWeight:700, marginTop:22, marginBottom:16 }}>Your Legal Co-Pilot.<br />Always On.</h2>
+            <p style={{ color:C.textMid, fontSize:18, maxWidth:500, margin:'0 auto' }}>Everything a landlord needs to stay compliant — in one place.</p>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:18 }}>
+            {FEATURES.map(({ icon, tag, title, body })=>(
+              <div key={title} className="feat-row" style={{ display:'flex', gap:22, padding:30, borderRadius:20, border:`1px solid ${C.border}`, background:C.card, transition:'background 0.2s' }}>
+                <div style={{ width:60, height:60, borderRadius:16, background:C.amberBg, border:`1px solid ${C.amberBorder}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, flexShrink:0 }}>{icon}</div>
+                <div>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                    <h3 style={{ fontFamily:SERIF, fontSize:18, fontWeight:700 }}>{title}</h3>
+                    <span style={{ fontSize:10, fontWeight:700, color:C.gold, background:C.amberBg, border:`1px solid ${C.amberBorder}`, padding:'2px 8px', borderRadius:100 }}>{tag}</span>
+                  </div>
+                  <p style={{ fontSize:14, color:C.textMid, lineHeight:1.78 }}>{body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ════ TESTIMONIALS ═══════════════════════════════════ */}
+      <div style={{ background:C.bg0, borderTop:`1px solid ${C.border}`, padding:'110px 56px' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto' }}>
+          <div style={{ textAlign:'center', marginBottom:68 }}>
+            <span style={{ fontSize:11, fontWeight:800, letterSpacing:'0.12em', textTransform:'uppercase', color:C.gold, background:C.amberBg, border:`1px solid ${C.amberBorder}`, borderRadius:100, padding:'5px 14px' }}>Real Landlords</span>
+            <h2 style={{ fontFamily:SERIF, fontSize:'clamp(34px,4.5vw,58px)', fontWeight:700, marginTop:22 }}>They Stopped Getting Surprised.<br />So Can You.</h2>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))', gap:24 }}>
+            {TESTIMONIALS.map(({ name, role, initials, color, text })=>(
+              <div key={name} className="test-card" style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:22, padding:36, transition:'all 0.2s', display:'flex', flexDirection:'column' }}>
+                <Stars />
+                <p style={{ fontSize:15, color:C.text, lineHeight:1.85, flex:1, fontStyle:'italic', marginBottom:28 }}>"{text}"</p>
+                <div style={{ display:'flex', alignItems:'center', gap:14, borderTop:`1px solid ${C.border}`, paddingTop:22 }}>
+                  <div style={{ width:46, height:46, borderRadius:'50%', background:`${color}22`, border:`1px solid ${color}44`, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, color, fontSize:14 }}>{initials}</div>
+                  <div>
+                    <div style={{ fontSize:14, fontWeight:600 }}>{name}</div>
+                    <div style={{ fontSize:12, color:C.textMid }}>{role}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display:'flex', gap:18, justifyContent:'center', marginTop:56, flexWrap:'wrap' }}>
+            {['🔒 SSL Encrypted','🏦 Stripe Payments','⚡ 99.9% Uptime','🔁 Cancel Anytime','🇺🇸 US-Based Data'].map(t=>(
+              <div key={t} style={{ fontSize:13, color:C.textMid, background:C.card, border:`1px solid ${C.border}`, borderRadius:100, padding:'9px 20px' }}>{t}</div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ════ PRICING ════════════════════════════════════════ */}
+      <div style={{ background:C.bg1, borderTop:`1px solid ${C.border}`, padding:'110px 56px' }}>
+        <div style={{ maxWidth:1020, margin:'0 auto', textAlign:'center' }}>
+          <span style={{ fontSize:11, fontWeight:800, letterSpacing:'0.12em', textTransform:'uppercase', color:C.gold, background:C.amberBg, border:`1px solid ${C.amberBorder}`, borderRadius:100, padding:'5px 14px' }}>Pricing</span>
+          <h2 style={{ fontFamily:SERIF, fontSize:'clamp(34px,4.5vw,58px)', fontWeight:700, marginTop:22, marginBottom:16 }}>Less Than One Coffee.<br />Potentially Worth Thousands.</h2>
+          <p style={{ color:C.textMid, fontSize:18, maxWidth:520, margin:'0 auto 60px' }}>The average landlord fine is $3,800. Our Pro plan is $19/month. Do the math.</p>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1.1fr 1fr', gap:20, alignItems:'start' }}>
             {/* Free */}
-            <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 22, padding: 38, textAlign: 'left', transition: 'border-color 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = C.borderLight}
-              onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
-            >
-              <div style={{ fontSize: 12, color: C.textMid, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Free Forever</div>
-              <div style={{ fontFamily: "var(--font-playfair), Georgia, serif", fontSize: 52, fontWeight: 700, marginBottom: 6, lineHeight: 1 }}>$0</div>
-              <div style={{ color: C.textMid, fontSize: 14, marginBottom: 34, borderBottom: `1px solid ${C.border}`, paddingBottom: 24 }}>No credit card required</div>
-              {['1 state monitored', 'Monthly law digest', 'Basic compliance alerts', 'Community forum access'].map(f => (
-                <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, marginBottom: 14 }}><span style={{ color: C.green }}>✓</span> {f}</div>
+            <div className="price-card" style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:24, padding:40, textAlign:'left', transition:'all 0.2s' }}>
+              <div style={{ fontSize:11, color:C.textMid, letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:12 }}>Free</div>
+              <div style={{ fontFamily:SERIF, fontSize:56, fontWeight:700, lineHeight:1, marginBottom:8 }}>$0</div>
+              <div style={{ color:C.textMid, fontSize:14, marginBottom:36, paddingBottom:24, borderBottom:`1px solid ${C.border}` }}>Forever free. No card needed.</div>
+              {['1 state monitored','Monthly law digest','Basic alert emails','Community support'].map(f=>(
+                <div key={f} style={{ display:'flex', alignItems:'center', gap:10, fontSize:14, color:C.textMid, marginBottom:13 }}><span style={{ color:C.green }}>✓</span>{f}</div>
               ))}
-              <button onClick={onStart} style={{ marginTop: 10, width: '100%', background: 'transparent', color: C.text, border: `1px solid ${C.border}`, borderRadius: 11, padding: '13px', fontSize: 15, fontWeight: 500, cursor: 'pointer' }}>
-                Get Started Free
-              </button>
+              <button onClick={onStart} style={{ width:'100%', marginTop:28, background:'transparent', color:C.text, border:`1px solid ${C.border}`, borderRadius:12, padding:'14px', fontSize:15, fontWeight:500, cursor:'pointer' }}>Get Started</button>
             </div>
             {/* Pro */}
-            <div style={{ background: 'linear-gradient(160deg, rgba(245,158,11,0.07) 0%, rgba(245,158,11,0.02) 100%)', border: '2px solid rgba(245,158,11,0.35)', borderRadius: 22, padding: 38, textAlign: 'left', position: 'relative' }}>
-              <div style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', background: C.gold, color: '#000', fontSize: 11, fontWeight: 800, padding: '5px 18px', borderRadius: 100, letterSpacing: '0.07em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Most Popular</div>
-              <div style={{ fontSize: 12, color: C.gold, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Pro</div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, marginBottom: 6, lineHeight: 1 }}>
-                <span style={{ fontFamily: "var(--font-playfair), Georgia, serif", fontSize: 52, fontWeight: 700 }}>$19</span>
-                <span style={{ color: C.textMid, fontSize: 16, paddingBottom: 8 }}>/month</span>
+            <div className="price-card" style={{ background:'linear-gradient(160deg,rgba(245,158,11,0.1) 0%,rgba(245,158,11,0.03) 100%)', border:'2px solid rgba(245,158,11,0.4)', borderRadius:24, padding:40, textAlign:'left', transition:'all 0.2s', position:'relative' }}>
+              <div style={{ position:'absolute', top:-16, left:'50%', transform:'translateX(-50%)', background:C.gold, color:'#000', fontSize:11, fontWeight:800, padding:'6px 20px', borderRadius:100, letterSpacing:'0.07em', textTransform:'uppercase', whiteSpace:'nowrap' }}>Most Popular</div>
+              <div style={{ fontSize:11, color:C.gold, letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:12 }}>Pro</div>
+              <div style={{ display:'flex', alignItems:'flex-end', gap:4, marginBottom:8, lineHeight:1 }}>
+                <span style={{ fontFamily:SERIF, fontSize:56, fontWeight:700 }}>$19</span>
+                <span style={{ color:C.textMid, fontSize:16, paddingBottom:8 }}>/month</span>
               </div>
-              <div style={{ color: C.textMid, fontSize: 14, marginBottom: 34, borderBottom: `1px solid ${C.amberBorder}`, paddingBottom: 24 }}>14-day free trial, cancel anytime</div>
-              {['All 50 states monitored', 'Real-time law alerts', 'AI plain-English summaries', 'Compliance health score', 'Lease clause generator', 'Deadline calendar & reminders', 'Ask the Law AI — unlimited', 'Priority email support'].map(f => (
-                <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, marginBottom: 12 }}><span style={{ color: C.gold }}>✓</span> {f}</div>
+              <div style={{ color:C.textMid, fontSize:14, marginBottom:36, paddingBottom:24, borderBottom:`1px solid rgba(245,158,11,0.2)` }}>14-day free trial · Cancel anytime</div>
+              {['All 50 states monitored','Real-time law alerts','AI plain-English summaries','Compliance health score','Lease clause generator','Deadline reminders','Ask the Law AI — unlimited','Priority support'].map(f=>(
+                <div key={f} style={{ display:'flex', alignItems:'center', gap:10, fontSize:14, marginBottom:13 }}><span style={{ color:C.gold }}>✓</span>{f}</div>
               ))}
-              <button onClick={onStart} style={{ marginTop: 12, width: '100%', background: C.gold, color: '#000', border: 'none', borderRadius: 11, padding: '14px', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
-                Start 14-Day Free Trial →
-              </button>
+              <button onClick={onStart} style={{ width:'100%', marginTop:28, background:C.gold, color:'#000', border:'none', borderRadius:12, padding:'16px', fontSize:16, fontWeight:800, cursor:'pointer' }}>Start 14-Day Free Trial →</button>
+            </div>
+            {/* Team */}
+            <div className="price-card" style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:24, padding:40, textAlign:'left', transition:'all 0.2s' }}>
+              <div style={{ fontSize:11, color:C.textMid, letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:12 }}>Team</div>
+              <div style={{ fontFamily:SERIF, fontSize:56, fontWeight:700, lineHeight:1, marginBottom:8 }}>$49</div>
+              <div style={{ color:C.textMid, fontSize:14, marginBottom:36, paddingBottom:24, borderBottom:`1px solid ${C.border}` }}>Property managers & attorneys</div>
+              {['Everything in Pro','Unlimited properties','White-label PDF reports','Client portal access','API access','Dedicated account manager'].map(f=>(
+                <div key={f} style={{ display:'flex', alignItems:'center', gap:10, fontSize:14, color:C.textMid, marginBottom:13 }}><span style={{ color:C.green }}>✓</span>{f}</div>
+              ))}
+              <button onClick={onStart} style={{ width:'100%', marginTop:28, background:'transparent', color:C.text, border:`1px solid ${C.border}`, borderRadius:12, padding:'14px', fontSize:15, fontWeight:500, cursor:'pointer' }}>Contact Us</button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* FOOTER */}
-      <div style={{ background: C.bg0, borderTop: `1px solid ${C.border}`, padding: '36px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 28, height: 28, background: C.gold, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>⚖️</div>
-          <span style={{ fontFamily: "var(--font-playfair), Georgia, serif", fontSize: 17, fontWeight: 700 }}>LawRadar</span>
-        </div>
-        <div style={{ fontSize: 12, color: C.textDim, textAlign: 'center', flex: 1 }}>© 2026 LawRadar · General information only, not legal advice</div>
-        <div style={{ display: 'flex', gap: 24 }}>
-          {['Privacy', 'Terms', 'Contact'].map(n => (
-            <span key={n} style={{ fontSize: 13, color: C.textMid, cursor: 'pointer' }}>{n}</span>
+      {/* ════ FAQ ════════════════════════════════════════════ */}
+      <div style={{ background:C.bg0, borderTop:`1px solid ${C.border}`, padding:'110px 56px' }}>
+        <div style={{ maxWidth:740, margin:'0 auto' }}>
+          <div style={{ textAlign:'center', marginBottom:60 }}>
+            <span style={{ fontSize:11, fontWeight:800, letterSpacing:'0.12em', textTransform:'uppercase', color:C.gold, background:C.amberBg, border:`1px solid ${C.amberBorder}`, borderRadius:100, padding:'5px 14px' }}>FAQ</span>
+            <h2 style={{ fontFamily:SERIF, fontSize:'clamp(28px,4vw,44px)', fontWeight:700, marginTop:22 }}>Common Questions</h2>
+          </div>
+          {FAQ.map(({ q, a }, i)=>(
+            <div key={q} style={{ borderBottom:`1px solid ${C.border}` }}>
+              <button onClick={()=>setOpenFaq(openFaq===i?null:i)} style={{ width:'100%', background:'transparent', border:'none', padding:'22px 4px', textAlign:'left', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center', gap:20 }}>
+                <span style={{ fontSize:16, fontWeight:600, color:C.text }}>{q}</span>
+                <span style={{ fontSize:22, color:C.gold, flexShrink:0, transform:openFaq===i?'rotate(45deg)':'rotate(0)', transition:'transform 0.2s', display:'inline-block' }}>+</span>
+              </button>
+              {openFaq===i && (
+                <div style={{ padding:'0 4px 22px', fontSize:15, color:C.textMid, lineHeight:1.78 }}>{a}</div>
+              )}
+            </div>
           ))}
+        </div>
+      </div>
+
+      {/* ════ FINAL CTA ══════════════════════════════════════ */}
+      <div style={{ background:'linear-gradient(135deg,#0D1425 0%,#141E34 50%,#0D1425 100%)', borderTop:`1px solid ${C.border}`, padding:'130px 56px', textAlign:'center' }}>
+        <div style={{ maxWidth:680, margin:'0 auto' }}>
+          <div style={{ fontSize:64, marginBottom:28 }}>🏠</div>
+          <h2 style={{ fontFamily:SERIF, fontSize:'clamp(38px,5vw,64px)', fontWeight:700, lineHeight:1.1, marginBottom:24 }}>
+            Stop Finding Out<br /><em style={{ color:C.gold, fontStyle:'italic' }}>Too Late.</em>
+          </h2>
+          <p style={{ fontSize:20, color:C.textMid, lineHeight:1.78, maxWidth:520, margin:'0 auto 52px' }}>
+            12,847 landlords already get instant alerts when a law affects their property. Join them free — setup takes 3 minutes.
+          </p>
+          <button className="hero-btn" onClick={onStart} style={{ background:C.gold, color:'#000', border:'none', borderRadius:14, padding:'22px 64px', fontSize:20, fontWeight:800, cursor:'pointer', animation:'goldGlow 3s ease infinite', transition:'transform 0.2s', display:'inline-block' }}>
+            Start Monitoring Free →
+          </button>
+          <p style={{ marginTop:22, fontSize:14, color:'#4B5563' }}>No credit card · Free forever plan · Cancel anytime</p>
+        </div>
+      </div>
+
+      {/* ════ FOOTER ═════════════════════════════════════════ */}
+      <div style={{ background:C.bg0, borderTop:`1px solid ${C.border}`, padding:'56px 56px 40px' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto', display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:48, marginBottom:48 }}>
+          <div>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
+              <div style={{ width:32, height:32, background:C.gold, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>⚖️</div>
+              <span style={{ fontFamily:SERIF, fontSize:18, fontWeight:700 }}>LawRadar</span>
+            </div>
+            <p style={{ fontSize:14, color:C.textMid, lineHeight:1.75, maxWidth:260 }}>The landlord compliance platform that watches every state legislature so you don't have to.</p>
+          </div>
+          {[
+            { h:'Product',  links:['Features','Pricing','Changelog','API'] },
+            { h:'Company',  links:['About','Blog','Careers','Contact'] },
+            { h:'Legal',    links:['Privacy','Terms','Cookies','Disclaimer'] },
+          ].map(({ h, links })=>(
+            <div key={h}>
+              <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:C.textMid, marginBottom:18 }}>{h}</div>
+              {links.map(l=>(
+                <div key={l} style={{ fontSize:14, color:'#4B5563', marginBottom:11, cursor:'pointer' }}>{l}</div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div style={{ borderTop:`1px solid ${C.border}`, paddingTop:24, display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12 }}>
+          <p style={{ fontSize:13, color:'#374151' }}>© 2026 LawRadar · General information only, not legal advice</p>
+          <div style={{ display:'flex', gap:24 }}>
+            {['Twitter','LinkedIn','GitHub'].map(n=>(
+              <span key={n} style={{ fontSize:13, color:'#4B5563', cursor:'pointer' }}>{n}</span>
+            ))}
+          </div>
         </div>
       </div>
     </div>
