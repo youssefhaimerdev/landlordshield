@@ -4,12 +4,11 @@ import { signUpWithEmail, signInWithEmail, signInWithGoogle } from '@/lib/supaba
 
 const C = {
   bg0:'#070C18', bg1:'#0D1425', card:'#0F1924',
-  border:'rgba(255,255,255,0.06)', borderLight:'rgba(255,255,255,0.12)',
-  gold:'#F59E0B', goldDark:'#D97706', goldLight:'#FCD34D',
+  border:'rgba(255,255,255,0.06)',
+  gold:'#F59E0B', goldDark:'#D97706',
   amberBg:'rgba(245,158,11,0.1)', amberBorder:'rgba(245,158,11,0.28)',
-  text:'#F1F5F9', textMid:'#94A3B8', textDim:'#374151',
+  text:'#F1F5F9', textMid:'#94A3B8',
   red:'#EF4444', redBg:'rgba(239,68,68,0.1)', redBorder:'rgba(239,68,68,0.28)',
-  green:'#10B981',
 }
 const SERIF = "var(--font-playfair,'Playfair Display',Georgia,serif)"
 
@@ -25,8 +24,17 @@ export default function AuthForm({ onSuccess }) {
   const handleGoogle = async () => {
     setGLoading(true)
     setErr('')
-    const { error } = await signInWithGoogle()
-    if (error) { setErr(error.message); setGLoading(false) }
+    try {
+      const { error } = await signInWithGoogle()
+      if (error) {
+        setErr(error.message)
+        setGLoading(false)
+      }
+      // On success the browser redirects — no further action needed here
+    } catch (e) {
+      setErr('Google sign-in failed. Please try again.')
+      setGLoading(false)
+    }
   }
 
   const handleSubmit = async () => {
@@ -35,31 +43,34 @@ export default function AuthForm({ onSuccess }) {
     if (pass.length < 6)  { setErr('Password must be at least 6 characters.'); return }
     if (mode === 'signup' && !name) { setErr('Please enter your name.'); return }
     setLoading(true)
-
-    if (mode === 'signup') {
-      const { data, error } = await signUpWithEmail(email, pass, name)
-      if (error) { setErr(error.message); setLoading(false); return }
-      if (data?.user) {
-        onSuccess({ userId: data.user.id, email: data.user.email, name })
+    try {
+      if (mode === 'signup') {
+        const { data, error } = await signUpWithEmail(email, pass, name)
+        if (error) { setErr(error.message); setLoading(false); return }
+        if (data?.user) {
+          onSuccess({ userId: data.user.id, email: data.user.email, name })
+        } else {
+          setErr('Check your email to confirm your account, then sign in.')
+          setMode('signin')
+        }
       } else {
-        setErr('Check your email to confirm your account, then sign in.')
-        setMode('signin')
+        const { data, error } = await signInWithEmail(email, pass)
+        if (error) { setErr(error.message); setLoading(false); return }
+        onSuccess({
+          userId: data.user.id,
+          email:  data.user.email,
+          name:   data.user.user_metadata?.name || email.split('@')[0],
+        })
       }
-    } else {
-      const { data, error } = await signInWithEmail(email, pass)
-      if (error) { setErr(error.message); setLoading(false); return }
-      onSuccess({
-        userId: data.user.id,
-        email:  data.user.email,
-        name:   data.user.user_metadata?.name || email.split('@')[0],
-      })
+    } catch (e) {
+      setErr('Something went wrong. Please try again.')
     }
     setLoading(false)
   }
 
   return (
     <div style={{ minHeight:'100vh', background:C.bg0, display:'flex', fontFamily:"var(--font-dm-sans,sans-serif)" }}>
-      {/* Left testimonial panel */}
+      {/* Left panel */}
       <div style={{ flex:1, background:C.bg1, borderRight:`1px solid ${C.border}`, padding:48, display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <div style={{ width:34, height:34, background:C.gold, borderRadius:9, display:'flex', alignItems:'center', justifyContent:'center', fontSize:17 }}>🛡️</div>
@@ -94,19 +105,16 @@ export default function AuthForm({ onSuccess }) {
             {mode === 'signup' ? 'Start monitoring for free. No credit card needed.' : 'Sign in to your LandlordShield account.'}
           </p>
 
-          {/* ── Google OAuth button ── */}
-          <button
-            onClick={handleGoogle}
-            disabled={gLoading}
-            style={{
-              width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:12,
-              background:'#fff', color:'#1a1a1a', border:'1px solid #e5e7eb',
-              borderRadius:11, padding:'13px 16px', fontSize:15, fontWeight:600,
-              cursor:'pointer', marginBottom:20, transition:'background .15s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
-            onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-          >
+          {/* Google button */}
+          <button onClick={handleGoogle} disabled={gLoading} style={{
+            width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:12,
+            background:'#fff', color:'#1a1a1a', border:'1px solid #e5e7eb',
+            borderRadius:11, padding:'13px 16px', fontSize:15, fontWeight:600,
+            cursor: gLoading ? 'not-allowed' : 'pointer', marginBottom:20, transition:'background .15s',
+            opacity: gLoading ? 0.8 : 1,
+          }}
+          onMouseEnter={e => { if (!gLoading) e.currentTarget.style.background='#f3f4f6' }}
+          onMouseLeave={e => e.currentTarget.style.background='#fff'}>
             {gLoading ? (
               <div style={{ width:18, height:18, border:'2px solid #ccc', borderTopColor:'#4285F4', borderRadius:'50%', animation:'spin .7s linear infinite' }} />
             ) : (
@@ -127,12 +135,12 @@ export default function AuthForm({ onSuccess }) {
             <div style={{ flex:1, height:1, background:C.border }} />
           </div>
 
-          {/* Email / password form */}
+          {/* Form */}
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
             {mode === 'signup' && (
               <div>
                 <label style={{ fontSize:13, fontWeight:500, color:C.textMid, display:'block', marginBottom:7 }}>Full name</label>
-                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="John Smith"
+                <input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="John Smith"
                   style={{ width:'100%', background:C.card, border:`1px solid ${C.border}`, borderRadius:11, padding:'13px 16px', fontSize:15, color:C.text }} />
               </div>
             )}
@@ -142,16 +150,14 @@ export default function AuthForm({ onSuccess }) {
             ].map(({ label, val, set, type, ph }) => (
               <div key={label}>
                 <label style={{ fontSize:13, fontWeight:500, color:C.textMid, display:'block', marginBottom:7 }}>{label}</label>
-                <input type={type} value={val} onChange={e => set(e.target.value)}
-                  placeholder={ph} onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                <input type={type} value={val} onChange={e=>set(e.target.value)}
+                  placeholder={ph} onKeyDown={e=>e.key==='Enter'&&handleSubmit()}
                   style={{ width:'100%', background:C.card, border:`1px solid ${C.border}`, borderRadius:11, padding:'13px 16px', fontSize:15, color:C.text }} />
               </div>
             ))}
-
             {err && (
               <div style={{ fontSize:13, color:C.red, background:C.redBg, border:`1px solid ${C.redBorder}`, borderRadius:8, padding:'10px 14px' }}>{err}</div>
             )}
-
             <button onClick={handleSubmit} disabled={loading} style={{
               background: loading ? C.goldDark : C.gold, color:'#000', border:'none',
               borderRadius:11, padding:'15px', fontSize:16, fontWeight:700,
@@ -164,13 +170,14 @@ export default function AuthForm({ onSuccess }) {
           <p style={{ textAlign:'center', marginTop:22, fontSize:14, color:C.textMid }}>
             {mode === 'signup' ? 'Already have an account? ' : "Don't have an account? "}
             <span style={{ color:C.gold, cursor:'pointer', fontWeight:500 }}
-              onClick={() => { setMode(mode === 'signup' ? 'signin' : 'signup'); setErr('') }}>
+              onClick={()=>{ setMode(mode==='signup'?'signin':'signup'); setErr('') }}>
               {mode === 'signup' ? 'Sign in' : 'Sign up free'}
             </span>
           </p>
-          <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         </div>
       </div>
     </div>
   )
 }
+
