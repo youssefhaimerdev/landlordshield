@@ -1,23 +1,41 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
+import { getSession, markOnboarded, saveUserProperties } from '@/lib/supabase'
 import OnboardingFlow from '@/components/OnboardingFlow'
 
-export default function OnboardingPage() {
-  const router = useRouter()
-  const [user, setUser] = useState(null)
+function OnboardingInner() {
+  const router  = useRouter()
+  const [user,  setUser]  = useState(null)
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    const stored = localStorage.getItem('lr_user')
-    if (!stored) { router.push('/auth'); return }
-    setUser(JSON.parse(stored))
+    getSession().then(session => {
+      if (!session) { router.push('/auth'); return }
+      setUser({
+        id:    session.user.id,
+        email: session.user.email,
+        name:  session.user.user_metadata?.name || session.user.email.split('@')[0],
+      })
+      setReady(true)
+    })
   }, [router])
 
-  const handleSuccess = (prefs) => {
-    localStorage.setItem('lr_prefs', JSON.stringify(prefs))
+  const handleSuccess = async ({ selStates, selTypes }) => {
+    if (!user) return
+    await saveUserProperties(user.id, selStates, selTypes)
+    await markOnboarded(user.id)
     router.push('/dashboard')
   }
 
-  if (!user) return null
+  if (!ready) return null
   return <OnboardingFlow user={user} onSuccess={handleSuccess} />
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={null}>
+      <OnboardingInner />
+    </Suspense>
+  )
 }
