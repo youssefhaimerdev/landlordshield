@@ -1,7 +1,14 @@
 'use client'
 import { useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { exchangeCode, getUserProperties } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+
+function getClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  )
+}
 
 function CallbackInner() {
   const router = useRouter()
@@ -12,20 +19,46 @@ function CallbackInner() {
       const code  = params.get('code')
       const error = params.get('error')
 
-      if (error) { router.push('/auth?error=' + error); return }
-
-      if (code) {
-        const { data, error: exchErr } = await exchangeCode(code)
-        if (exchErr || !data?.session) {
-          router.push('/auth?error=callback_failed'); return
-        }
-        const props = await getUserProperties(data.session.user.id)
-        router.push(props.length > 0 ? '/dashboard' : '/onboarding')
+      if (error) {
+        console.error('OAuth error:', error)
+        router.push('/auth')
         return
       }
 
-      router.push('/dashboard')
+      if (code) {
+        try {
+          const supabase = getClient()
+          const { data, error: exchErr } = await supabase.auth.exchangeCodeForSession(code)
+
+          if (exchErr) {
+            console.error('Exchange error:', exchErr)
+            router.push('/auth')
+            return
+          }
+
+          if (data?.session) {
+            // Check if user has properties (already onboarded)
+            const { data: props } = await supabase
+              .from('properties')
+              .select('id')
+              .eq('user_id', data.session.user.id)
+              .limit(1)
+
+            if (props && props.length > 0) {
+              router.push('/dashboard')
+            } else {
+              router.push('/onboarding')
+            }
+            return
+          }
+        } catch (e) {
+          console.error('Callback error:', e)
+        }
+      }
+
+      router.push('/auth')
     }
+
     handle()
   }, [params, router])
 
