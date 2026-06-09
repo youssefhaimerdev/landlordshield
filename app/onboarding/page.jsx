@@ -1,17 +1,17 @@
 'use client'
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getSession, markOnboarded, saveUserProperties } from '@/lib/supabase'
+import { getSupabase, saveUserProperties, markOnboarded } from '@/lib/supabase'
 import OnboardingFlow from '@/components/OnboardingFlow'
 
-function OnboardingInner() {
-  const router  = useRouter()
+export default function OnboardingPage() {
+  const router = useRouter()
   const [user,  setUser]  = useState(null)
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    getSession().then(session => {
-      if (!session) { router.push('/auth'); return }
+    getSupabase().auth.getSession().then(({ data: { session } }) => {
+      if (!session) { router.replace('/auth'); return }
       setUser({
         id:    session.user.id,
         email: session.user.email,
@@ -30,12 +30,4 @@ function OnboardingInner() {
 
   if (!ready) return null
   return <OnboardingFlow user={user} onSuccess={handleSuccess} />
-}
-
-export default function OnboardingPage() {
-  return (
-    <Suspense fallback={null}>
-      <OnboardingInner />
-    </Suspense>
-  )
 }
