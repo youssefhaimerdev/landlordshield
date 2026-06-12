@@ -23,8 +23,13 @@ export default function OnboardingPage() {
 
   const handleSuccess = async ({ selStates, selTypes }) => {
     if (!user) return
-    await saveUserProperties(user.id, selStates, selTypes)
-    await markOnboarded(user.id)
+    try {
+      await saveUserProperties(user.id, selStates, selTypes)
+      await markOnboarded(user.id)
+    } catch (err) {
+      console.error('[onboarding] save error:', err)
+    }
+    // Always push to dashboard — even if save failed, don't trap user in loop
     router.push('/dashboard')
   }
 
