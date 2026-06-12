@@ -13,30 +13,33 @@ export default function DashboardPage() {
   useEffect(() => {
     const sb = getSupabase()
 
-    // Use onAuthStateChange — more reliable than getSession() on first load
     const { data: { subscription } } = sb.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-        subscription.unsubscribe()
+      if (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN') return
+      subscription.unsubscribe()
 
-        if (!session) { router.replace('/auth'); return }
+      if (!session) { router.replace('/auth'); return }
 
-        setUser({
-          id:    session.user.id,
-          email: session.user.email,
-          name:  session.user.user_metadata?.name || session.user.email.split('@')[0],
-        })
-
-        const { data: props } = await sb
-          .from('properties').select('*').eq('user_id', session.user.id)
-
-        if (!props || props.length === 0) { router.replace('/onboarding'); return }
-
-        setPrefs({
-          selStates: [...new Set(props.map(p => p.state))],
-          selTypes:  [...new Set(props.map(p => p.property_type).filter(Boolean))],
-        })
-        setReady(true)
+      const u = {
+        id:    session.user.id,
+        email: session.user.email,
+        name:  session.user.user_metadata?.name || session.user.email.split('@')[0],
       }
+      setUser(u)
+
+      // Load properties — if none found, show dashboard with fallback (no loop)
+      const { data: props } = await sb
+        .from('properties').select('*').eq('user_id', session.user.id)
+
+      const selStates = props?.length
+        ? [...new Set(props.map(p => p.state))]
+        : ['CA', 'NY', 'FL', 'WA', 'OR']  // fallback so dashboard always renders
+
+      const selTypes = props?.length
+        ? [...new Set(props.map(p => p.property_type).filter(Boolean))]
+        : ['general']
+
+      setPrefs({ selStates, selTypes })
+      setReady(true)
     })
 
     return () => subscription.unsubscribe()
@@ -51,4 +54,3 @@ export default function DashboardPage() {
 
   return <Dashboard user={user} prefs={prefs} />
 }
-
